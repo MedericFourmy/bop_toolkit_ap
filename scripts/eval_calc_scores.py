@@ -152,6 +152,7 @@ for error_dir_path in p["error_dir_paths"]:
     error_sign = os.path.basename(error_dir_path)
     err_type = str(error_sign.split("_")[0].split("=")[1])
     n_top = int(error_sign.split("_")[1].split("=")[1])
+    assert n_top == -1, "Should consider all errors"
     result_info = os.path.basename(os.path.dirname(error_dir_path)).split("_")
     method = result_info[0]
     dataset_info = result_info[1].split("-")

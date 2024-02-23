@@ -277,7 +277,7 @@ for result_filename in p["result_filenames"]:
                 )
 
                 # Select the required number of top estimated poses.
-                obj_ests_sorted = obj_ests_sorted[slice(0, n_top_curr)]
+                # obj_ests_sorted = obj_ests_sorted[slice(0, n_top_curr)]
                 ests_counter += len(obj_ests_sorted)
 
                 # Calculate error of each pose estimate w.r.t. all GT poses of the same
