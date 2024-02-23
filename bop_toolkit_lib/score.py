@@ -59,6 +59,19 @@ def calc_recall(tp_count, targets_count):
         return tp_count / float(targets_count)
 
 
+def calc_precision(tp_count, det_count):
+    """Calculates recall.
+
+    :param tp_count: Number of true positives.
+    :param det_count: Number of detections.
+    :return: The recall rate.
+    """
+    if det_count == 0:
+        return 0.0
+    else:
+        return tp_count / float(det_count)
+
+
 def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
     """Calculates performance scores for the 6D object localization task.
 
@@ -98,6 +111,7 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
             obj_tars[obj_id] += count
             scene_tars[scene_id] += count
 
+    ################## RECALL ##################
     # Count the number of true positives.
     tps = 0  # Total number of true positives.
     obj_tps = {i: 0 for i in obj_ids}  # True positives per object.
@@ -123,6 +137,35 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
         scene_recalls[i] = float(calc_recall(scene_tps[i], scene_tars[i]))
     mean_scene_recall = float(np.mean(list(scene_recalls.values())).squeeze())
 
+
+    ################## PRECISION ##################
+    # Count the number of detections (TP+FN).
+    dets = 0  # Total number of detections.
+    obj_dets = {i: 0 for i in obj_ids}  # detections per object.
+    scene_dets = {i: 0 for i in scene_ids}  # detections per scene.
+    for m in matches:
+        if m["est_id"] != -1:
+            dets += 1
+            obj_dets[m["obj_id"]] += 1
+            scene_dets[m["scene_id"]] += 1
+
+    # Total precision.
+    precision = calc_precision(tps, dets)
+
+
+    # Precision per object.
+    obj_precisions = {}
+    for i in obj_ids:
+        obj_precisions[i] = calc_precision(obj_tps[i], obj_dets[i])
+    mean_obj_precision = float(np.mean(list(obj_precisions.values())).squeeze())
+
+    # Precision per scene.
+    scene_precisions = {}
+    for i in scene_ids:
+        scene_precisions[i] = float(calc_precision(scene_tps[i], scene_dets[i]))
+    mean_scene_precision = float(np.mean(list(scene_precisions.values())).squeeze())
+
+
     # Final scores.
     scores = {
         "recall": float(recall),
@@ -130,6 +173,11 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
         "mean_obj_recall": float(mean_obj_recall),
         "scene_recalls": scene_recalls,
         "mean_scene_recall": float(mean_scene_recall),
+        "precision": float(precision),
+        "obj_precisions": obj_precisions,
+        "mean_obj_precision": float(mean_obj_precision),
+        "scene_precisions": scene_precisions,
+        "mean_scene_precision": float(mean_scene_precision),
         "gt_count": len(matches),
         "targets_count": int(tars),
         "tp_count": int(tps),
@@ -144,6 +192,14 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
             ["{}: {:.3f}".format(i, s) for i, s in scores["scene_recalls"].items()]
         )
 
+        obj_precisions_str = ", ".join(
+            ["{}: {:.3f}".format(i, s) for i, s in scores["obj_precisions"].items()]
+        )
+
+        scene_precisions_str = ", ".join(
+            ["{}: {:.3f}".format(i, s) for i, s in scores["scene_precisions"].items()]
+        )
+
         misc.log("")
         misc.log("GT count:           {:d}".format(scores["gt_count"]))
         misc.log("Target count:       {:d}".format(scores["targets_count"]))
@@ -153,6 +209,11 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
         misc.log("Mean scene recall:  {:.4f}".format(scores["mean_scene_recall"]))
         misc.log("Object recalls:\n{}".format(obj_recalls_str))
         misc.log("Scene recalls:\n{}".format(scene_recalls_str))
+        misc.log("Precision:             {:.4f}".format(scores["precision"]))
+        misc.log("Mean object precision: {:.4f}".format(scores["mean_obj_precision"]))
+        misc.log("Mean scene precision:  {:.4f}".format(scores["mean_scene_precision"]))
+        misc.log("Object precisions:\n{}".format(obj_precisions_str))
+        misc.log("Scene precisions:\n{}".format(scene_precisions_str))
         misc.log("")
 
     return scores

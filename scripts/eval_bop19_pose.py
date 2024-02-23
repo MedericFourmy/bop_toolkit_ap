@@ -108,6 +108,7 @@ for result_filename in p["result_filenames"]:
 
     # Volume under recall surface (VSD) / area under recall curve (MSSD, MSPD).
     average_recalls = {}
+    average_precisions = {}
 
     # Name of the result and the dataset.
     result_name = os.path.splitext(os.path.basename(result_filename))[0]
@@ -193,6 +194,7 @@ for result_filename in p["result_filenames"]:
         # Recall scores for all settings of the threshold of correctness (and also
         # of the misalignment tolerance tau in the case of VSD).
         recalls = []
+        precisions = []
 
         # Calculate performance scores.
         for error_sign, error_dir_path in error_dir_paths.items():
@@ -231,11 +233,15 @@ for result_filename in p["result_filenames"]:
                 misc.log("Loading calculated scores from: {}".format(scores_path))
                 scores = inout.load_json(scores_path)
                 recalls.append(scores["recall"])
+                precisions.append(scores["precision"])
+                
 
         average_recalls[error["type"]] = np.mean(recalls)
+        average_precisions[error["type"]] = np.mean(precisions)
 
         misc.log("Recall scores: {}".format(" ".join(map(str, recalls))))
         misc.log("Average recall: {}".format(average_recalls[error["type"]]))
+        misc.log("Average precision: {}".format(average_recalls[error["type"]]))
 
     time_total = time.time() - time_start
     misc.log("Evaluation of {} took {}s.".format(result_filename, time_total))
@@ -246,10 +252,16 @@ for result_filename in p["result_filenames"]:
         final_scores["bop19_average_recall_{}".format(error["type"])] = average_recalls[
             error["type"]
         ]
+        final_scores["bop19_average_precision_{}".format(error["type"])] = average_precisions[
+            error["type"]
+        ]
 
     # Final score for the given dataset.
     final_scores["bop19_average_recall"] = np.mean(
-        [average_recalls["vsd"], average_recalls["mssd"], average_recalls["mspd"]]
+        ar for ar in average_recalls.values()
+    )
+    final_scores["bop19_average_precision"] = np.mean(
+        ar for ar in average_precisions.values()
     )
 
     # Average estimation time per image.
