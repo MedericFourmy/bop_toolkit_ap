@@ -20,7 +20,8 @@ p = {
     # Errors to calculate.
     "errors": [
         {
-            "n_top": -1,
+            # "n_top": -1,
+            "n_top": 0,
             "type": "vsd",
             "vsd_deltas": {
                 "hb": 15,
@@ -35,18 +36,24 @@ p = {
                 "tyol": 15,
                 "ycbv": 15,
                 "hope": 15,
+                "hopeVideo":15,
+                "SynthStatic":15,
+                "SynthDynamic":15,
+                "SynthStaticDummy":15
             },
             "vsd_taus": list(np.arange(0.05, 0.51, 0.05)),
             "vsd_normalized_by_diameter": True,
             "correct_th": [[th] for th in np.arange(0.05, 0.51, 0.05)],
         },
         {
-            "n_top": -1,
+            # "n_top": -1,
+            "n_top": 0,
             "type": "mssd",
             "correct_th": [[th] for th in np.arange(0.05, 0.51, 0.05)],
         },
         {
-            "n_top": -1,
+            # "n_top": -1,
+            "n_top": 0,
             "type": "mspd",
             "correct_th": [[th] for th in np.arange(5, 51, 5)],
         },
@@ -64,7 +71,12 @@ p = {
     # description of the format. Example results can be found at:
     # https://bop.felk.cvut.cz/media/data/bop_sample_results/bop_challenge_2019_sample_results.zip
     "result_filenames": [
-        "/relative/path/to/csv/with/results",
+        # "/media/vojta/Data/HappyPose_Data/bop_datasets/hopeVideo/cosypose_hopeVideo-test_masks.csv"
+        # "/media/vojta/Data/HappyPose_Data/bop_datasets/hopeVideo/gtsam_hopeVideo-test_fifo.csv"
+        # "/media/vojta/Data/HappyPose_Data/bop_datasets/SynthStatic/cosypose_SynthStatic-test_3.csv",
+        "/media/vojta/Data/HappyPose_Data/bop_datasets/SynthStatic/gtsam_SynthStatic-test_fifo_4x60_7.csv"
+        # "/media/vojta/Data/HappyPose_Data/bop_datasets/SynthStaticDummy/groundTruth_SynthStaticDummy-test.csv"
+        # "/media/vojta/Data/HappyPose_Data/bop_datasets/SynthStaticDummy/augmentedGroundTruth_SynthStaticDummy-test_3.csv"
     ],
     # Folder with results to be evaluated.
     "results_path": config.results_path,
@@ -234,14 +246,14 @@ for result_filename in p["result_filenames"]:
                 scores = inout.load_json(scores_path)
                 recalls.append(scores["recall"])
                 precisions.append(scores["precision"])
-                
 
         average_recalls[error["type"]] = np.mean(recalls)
         average_precisions[error["type"]] = np.mean(precisions)
 
         misc.log("Recall scores: {}".format(" ".join(map(str, recalls))))
         misc.log("Average recall: {}".format(average_recalls[error["type"]]))
-        misc.log("Average precision: {}".format(average_recalls[error["type"]]))
+        misc.log("precision scores: {}".format(" ".join(map(str, precisions))))
+        misc.log("Average precision: {}".format(average_precisions[error["type"]]))
 
     time_total = time.time() - time_start
     misc.log("Evaluation of {} took {}s.".format(result_filename, time_total))
@@ -256,12 +268,14 @@ for result_filename in p["result_filenames"]:
             error["type"]
         ]
 
+
     # Final score for the given dataset.
     final_scores["bop19_average_recall"] = np.mean(
-        ar for ar in average_recalls.values()
+        [average_recalls["vsd"], average_recalls["mssd"], average_recalls["mspd"]]
     )
+
     final_scores["bop19_average_precision"] = np.mean(
-        ar for ar in average_precisions.values()
+        [average_precisions["vsd"], average_precisions["mssd"], average_precisions["mspd"]]
     )
 
     # Average estimation time per image.

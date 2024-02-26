@@ -152,7 +152,6 @@ for error_dir_path in p["error_dir_paths"]:
     error_sign = os.path.basename(error_dir_path)
     err_type = str(error_sign.split("_")[0].split("=")[1])
     n_top = int(error_sign.split("_")[1].split("=")[1])
-    assert n_top == -1, "Should consider all errors"
     result_info = os.path.basename(os.path.dirname(error_dir_path)).split("_")
     method = result_info[0]
     dataset_info = result_info[1].split("-")
@@ -268,7 +267,15 @@ for error_dir_path in p["error_dir_paths"]:
                     err["errors"][gt_id] = [factor * e for e in err["errors"][gt_id]]
 
         # Match the estimated poses to the ground-truth poses.
-        matches += pose_matching.match_poses_scene(
+        # matches += pose_matching.match_poses_scene(
+        #     scene_id,
+        #     scene_gt_curr,
+        #     scene_gt_valid,
+        #     scene_errs,
+        #     p["correct_th"][err_type],
+        #     n_top,
+        # )
+        matches += pose_matching.match_poses_scene_all(
             scene_id,
             scene_gt_curr,
             scene_gt_valid,

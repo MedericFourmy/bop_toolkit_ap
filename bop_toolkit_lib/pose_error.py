@@ -101,7 +101,6 @@ def vsd(
 
             e = (np.sum(costs) + visib_comp_count) / float(visib_union_count)
             errors.append(e)
-
     return errors
 
 
@@ -336,3 +335,15 @@ def cou_bb_proj(R_est, t_est, R_gt, t_gt, K, renderer, obj_id):
 
     e = 1.0 - misc.iou(bb_est, bb_gt)
     return e
+
+def nopo():
+    """
+    number of predicted outliers (false positives)
+    """
+    pass
+
+def nomi():
+    """
+    number of missed inliers (false negatives)
+    """
+    pass

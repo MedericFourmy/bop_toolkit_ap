@@ -23,7 +23,8 @@ p = {
     # Top N pose estimates (with the highest score) to be evaluated for each
     # object class in each image.
     # Options: 0 = all, -1 = given by the number of GT poses.
-    "n_top": 1,
+    # "n_top": 1,
+    "n_top": 0,
     # Pose error function.
     # Options: 'vsd', 'mssd', 'mspd', 'ad', 'adi', 'add', 'cus', 're', 'te, etc.
     "error_type": "vsd",
@@ -41,6 +42,10 @@ p = {
         "tyol": 15,
         "ycbv": 15,
         "hope": 15,
+        "hopeVideo": 15,
+        "SynthStatic": 15,
+        "SynthDynamic": 15,
+        "SynthStaticDummy": 15
     },
     "vsd_taus": list(np.arange(0.05, 0.51, 0.05)),
     "vsd_normalized_by_diameter": True,
@@ -244,7 +249,20 @@ for result_filename in p["result_filenames"]:
                 depth_im = inout.load_depth(depth_path)
                 depth_im *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
 
-            for obj_id, target in im_targets.items():
+            # added by pribavoj:
+            # consider all object_ids that are in either gt or est.
+            im_targets_all = im_targets
+            if im_id in ests_org[scene_id]:
+                for obj_type in ests_org[scene_id][im_id]:
+                    inst_count = len(ests_org[scene_id][im_id][obj_type])
+                    if obj_type not in im_targets_all:
+                        im_targets_all[obj_type] = {'im_id': im_id, 'inst_count':inst_count, 'obj_id':obj_type, 'scene_id':scene_id}
+                    else:
+                        im_targets_all[obj_type]['inst_count'] = max(inst_count, im_targets_all[obj_type]['inst_count'])
+            #
+
+            # for obj_id, target in im_targets.items():
+            for obj_id, target in im_targets_all.items():
                 # The required number of top estimated poses.
                 if p["n_top"] == 0:  # All estimates are considered.
                     n_top_curr = None
@@ -277,7 +295,7 @@ for result_filename in p["result_filenames"]:
                 )
 
                 # Select the required number of top estimated poses.
-                # obj_ests_sorted = obj_ests_sorted[slice(0, n_top_curr)]
+                obj_ests_sorted = obj_ests_sorted[slice(0, n_top_curr)]
                 ests_counter += len(obj_ests_sorted)
 
                 # Calculate error of each pose estimate w.r.t. all GT poses of the same
@@ -289,6 +307,11 @@ for result_filename in p["result_filenames"]:
 
                     errs = {}  # Errors w.r.t. GT poses of the same object class.
                     for gt_id, gt in enumerate(scene_gt[im_id]):
+
+                        # if p["error_type"] == "nopo":
+                        #     e = [pose_error.nopo()]
+                        # elif p["error_type"] == "nomi":
+                        #     pass
                         if gt["obj_id"] != obj_id:
                             continue
 
@@ -429,10 +452,8 @@ for result_filename in p["result_filenames"]:
 
                         elif p["error_type"] == "te":
                             e = [pose_error.te(t_e, t_g)]
-
                         else:
                             raise ValueError("Unknown pose error function.")
-
                         errs[gt_id] = e
 
                     # Save the calculated errors.

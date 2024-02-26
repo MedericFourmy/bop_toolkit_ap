@@ -4,7 +4,7 @@
 """Matching of estimated poses to the ground-truth poses."""
 
 import numpy as np
-
+from collections import defaultdict
 
 def match_poses(errs, error_ths, max_ests_count=0, gt_valid_mask=None):
     """Matches the estimated poses to the ground-truth poses.
@@ -74,7 +74,6 @@ def match_poses(errs, error_ths, max_ests_count=0, gt_valid_mask=None):
             best_errors_normed = [
                 best_error[i] / float(error_ths[i]) for i in range(error_num_elems)
             ]
-
             # Save info about the match.
             matches.append(
                 {
@@ -83,6 +82,18 @@ def match_poses(errs, error_ths, max_ests_count=0, gt_valid_mask=None):
                     "score": e["score"],
                     "error": best_error,
                     "error_norm": best_errors_normed,
+                    "matched": True,
+                }
+            )
+        else:
+            matches.append(
+                {
+                    "est_id": e["est_id"],
+                    "gt_id": best_gt_id,
+                    "score": e["score"],
+                    "error": [-1],
+                    "error_norm": [-1],
+                    "matched": False,
                 }
             )
 
@@ -156,6 +167,120 @@ def match_poses_scene(
                     g["error"] = m["error"]
                     g["error_norm"] = m["error_norm"]
 
+        scene_matches += im_matches
+
+    return scene_matches
+
+def match_poses_scene_all(
+    scene_id, scene_gt, scene_gt_valid, scene_errs, correct_th, n_top
+):
+    """Matches the estimated poses to the ground-truth poses in one scene.
+    if no ground-truth instance of that object exists, list that match as invalid
+    :param scene_id: Scene ID.
+    :param scene_gt: Dictionary mapping image ID's to lists of dictionaries with:
+      - 'obj_id': Object ID of the ground-truth pose.
+    :param scene_gt_valid: Dictionary mapping image ID's to lists of boolean
+      values indicating which ground-truth poses should be considered.
+    :param scene_errs: List of dictionaries with:
+      - 'im_id': Image ID.
+      - 'obj_id': Object ID.
+      - 'est_id': ID of the pose estimate.
+      - 'score': Confidence score of the pose estimate.
+      - 'errors': Dictionary mapping ground-truth ID's to errors of the pose
+          estimate w.r.t. the ground-truth poses.
+    :param error_obj_threshs: Dictionary mapping object ID's to values of the
+      threshold of correctness.
+    :param n_top: Top N pose estimates (with the highest score) to be evaluated
+      for each object class in each image.
+    :return:
+    """
+    # Organize the errors by image ID and object ID (for faster query).
+    scene_errs_org = {}
+    for e in scene_errs:
+        scene_errs_org.setdefault(e["im_id"], {}).setdefault(e["obj_id"], []).append(e)
+
+
+    # Matching of poses in individual images.
+    scene_matches = []
+    for im_id, im_gts in scene_gt.items():
+        im_matches = []
+
+        for gt_id, gt in enumerate(im_gts):
+            im_matches.append(
+                {
+                    "scene_id": scene_id,
+                    "im_id": im_id,
+                    "obj_id": gt["obj_id"],
+                    "gt_id": gt_id,
+                    "est_id": -1,
+                    "score": -1,
+                    "error": -1,
+                    "error_norm": -1,
+                    "valid": scene_gt_valid[im_id][gt_id],
+                    "matched": None
+                }
+            )
+
+        # Treat estimates of each object separately.
+        im_obj_ids = set([gt["obj_id"] for gt in im_gts])
+
+        additional_matches = []
+        for obj_id in im_obj_ids:
+            if (im_id in scene_errs_org.keys() and obj_id in scene_errs_org[im_id].keys()):
+                # Greedily match the estimated poses to the ground truth poses.
+                errs_im_obj = scene_errs_org[im_id][obj_id]
+                ms = match_poses(errs_im_obj, correct_th, n_top, scene_gt_valid[im_id])
+
+                # Update info about the matched GT poses.
+                for m in ms:  # valid matches
+                    if m["matched"] == True:
+                        g = im_matches[m["gt_id"]]
+                        g["est_id"] = m["est_id"]
+                        g["score"] = m["score"]
+                        g["error"] = m["error"]
+                        g["error_norm"] = m["error_norm"]
+                        g["matched"] = m["matched"]
+                    else:  # detections without any match
+                        additional_matches.append({
+                            "scene_id": scene_id,
+                            "im_id": im_id,
+                            "obj_id": obj_id,
+                            "gt_id": m["gt_id"],
+                            "est_id": m["est_id"],
+                            "score": m["score"],
+                            "error": m["error"],
+                            "error_norm": m["error_norm"],
+                            "valid": scene_gt_valid[im_id][m["gt_id"]],
+                            "matched": m["matched"]
+                        })
+                print('')
+
+
+
+        scene_gt_org = defaultdict(lambda : 0)
+        for g in im_gts:
+            scene_gt_org[g['obj_id']] += 1
+
+        for additional_match in additional_matches:
+            im_matches.append(additional_match)
+
+        if im_id in scene_errs_org:
+            for err_obj_id in scene_errs_org[im_id]:
+                for i in range(max(0, len(scene_errs_org[im_id][err_obj_id]) - scene_gt_org[err_obj_id])):
+                    im_matches.append(
+                        {
+                            "scene_id": scene_id,
+                            "im_id": im_id,
+                            "obj_id": err_obj_id,
+                            "gt_id": -1,
+                            "est_id": -1,
+                            "score": -1,
+                            "error": -1,
+                            "error_norm": -1,
+                            "valid": False,
+                            "matched": False
+                        }
+                    )
         scene_matches += im_matches
 
     return scene_matches

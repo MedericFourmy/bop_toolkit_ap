@@ -25,15 +25,15 @@ import warnings
 ################################################################################
 p = {
     # Folder containing the BOP datasets.
-    "dataset_path": "/path/to/dataset",
+    "dataset_path": "/media/vojta/Data/HappyPose_Data/bop_datasets/SynthStatic",
     # Dataset split. Options: 'train', 'test'.
-    "dataset_split": "val",
+    "dataset_split": "test",
     # Dataset split type. Options: 'synt', 'real', None = default. See dataset_params.py for options.
     "dataset_split_type": None,
     # scene number to open tool on
     "start_scene_num": 1,
     # image number inside scene to open tool on
-    "start_image_num": 0,
+    "start_image_num": 1,
 }
 ################################################################################
 
@@ -750,9 +750,12 @@ class AppWindow:
                         obj_geometry, obj_name, obj_instance, transform_cam_to_obj
                     )
                     # adding object to the scene
-                    obj_geometry.translate(transform_cam_to_obj[0:3, 3])
-                    center = obj_geometry.get_center()
-                    obj_geometry.rotate(transform_cam_to_obj[0:3, 0:3], center=center)
+                    # obj_geometry.translate(transform_cam_to_obj[0:3, 3])
+                    # center = obj_geometry.get_minimal_oriented_bounding_box().center  # new
+                    # center = obj_geometry.get_center()  # original
+                    # obj_geometry.rotate(transform_cam_to_obj[0:3, 0:3], center=center)
+
+                    obj_geometry.transform(transform_cam_to_obj)
                     self._scene.scene.add_geometry(
                         obj_name,
                         obj_geometry,
